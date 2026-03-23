@@ -45,6 +45,7 @@ import {
   isTimeOutOfBounds,
   isTimeViolatingFutureLimit,
 } from "@calcom/lib/isOutOfBounds";
+import { getEffectiveBookingGuardrails } from "@calcom/lib/bookingGuardrails";
 import logger from "@calcom/lib/logger";
 import { safeStringify } from "@calcom/lib/safeStringify";
 import { withReporting } from "@calcom/lib/sentryWrapper";
@@ -1009,7 +1010,7 @@ export class AvailableSlotsService {
         dateFrom: startTime.format(),
         dateTo: endTime.format(),
         eventTypeId: eventType.id,
-        afterEventBuffer: eventType.afterEventBuffer,
+        afterEventBuffer: effectiveGuardrails.afterEventBuffer,
         beforeEventBuffer: eventType.beforeEventBuffer,
         duration: input.duration || 0,
         returnDateOverrides: false,
@@ -1162,6 +1163,16 @@ export class AvailableSlotsService {
       logger.settings.minLevel = 2;
     }
 
+    // Resolve the team that contributes guardrail floors (direct team, or parent team for managed events).
+    const teamForGuardrails = eventType.team ?? eventType.parent?.team ?? null;
+    const effectiveGuardrails = getEffectiveBookingGuardrails(
+      {
+        minimumBookingNotice: eventType.minimumBookingNotice,
+        afterEventBuffer: eventType.afterEventBuffer,
+      },
+      teamForGuardrails
+    );
+
     const isRollingWindowPeriodType = eventType.periodType === PeriodType.ROLLING_WINDOW;
     const startTimeAsIsoString = input.startTime;
     const isStartTimeInPast = dayjs(startTimeAsIsoString).isBefore(dayjs().subtract(1, "day").startOf("day"));
@@ -1182,7 +1193,7 @@ export class AvailableSlotsService {
     const startTime = this.getStartTime(
       startTimeAdjustedForRollingWindowComputation,
       input.timeZone,
-      eventType.minimumBookingNotice
+      effectiveGuardrails.minimumBookingNotice
     );
     const endTime =
       input.timeZone === "Etc/GMT" ? dayjs.utc(input.endTime) : dayjs(input.endTime).utc().tz(input.timeZone);
@@ -1261,12 +1272,12 @@ export class AvailableSlotsService {
         // adjust start time so we can check for available slots in the first two weeks
         startTime:
           hasFallbackRRHosts && startTime.isBefore(twoWeeksFromNow)
-            ? this.getStartTime(dayjs().format(), input.timeZone, eventType.minimumBookingNotice)
+            ? this.getStartTime(dayjs().format(), input.timeZone, effectiveGuardrails.minimumBookingNotice)
             : startTime,
         // adjust end time so we can check for available slots in the first two weeks
         endTime:
           hasFallbackRRHosts && endTime.isBefore(twoWeeksFromNow)
-            ? this.getStartTime(twoWeeksFromNow.format(), input.timeZone, eventType.minimumBookingNotice)
+            ? this.getStartTime(twoWeeksFromNow.format(), input.timeZone, effectiveGuardrails.minimumBookingNotice)
             : endTime,
         bypassBusyCalendarTimes,
         silentCalendarFailures,
@@ -1349,7 +1360,7 @@ export class AvailableSlotsService {
       eventLength: input.duration || eventType.length,
       offsetStart: eventType.offsetStart,
       dateRanges: aggregatedAvailability,
-      minimumBookingNotice: eventType.minimumBookingNotice,
+      minimumBookingNotice: effectiveGuardrails.minimumBookingNotice,
       frequency: eventType.slotInterval || input.duration || eventType.length,
       datesOutOfOffice: !isTeamEvent ? allUsersAvailability[0]?.datesOutOfOffice : undefined,
       showOptimizedSlots: eventType.showOptimizedSlots,
@@ -1598,7 +1609,7 @@ export class AvailableSlotsService {
           try {
             isOutOfBounds = isTimeOutOfBounds({
               time: slot.time,
-              minimumBookingNotice: eventType.minimumBookingNotice,
+              minimumBookingNotice: effectiveGuardrails.minimumBookingNotice,
             });
           } catch (error) {
             if (error instanceof BookingDateInPastError) {

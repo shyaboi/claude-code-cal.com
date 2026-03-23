@@ -643,6 +643,8 @@ export class EventTypeRepository implements IEventTypesRepository {
               id: true,
               bookingLimits: true,
               includeManagedEventsInLimits: true,
+              minimumBookingNotice: true,
+              afterEventBuffer: true,
             },
           },
         },
@@ -663,6 +665,8 @@ export class EventTypeRepository implements IEventTypesRepository {
           rrTimestampBasis: true,
           bookingLimits: true,
           includeManagedEventsInLimits: true,
+          minimumBookingNotice: true,
+          afterEventBuffer: true,
           parent: {
             select: {
               slug: true,
@@ -959,6 +963,8 @@ export class EventTypeRepository implements IEventTypesRepository {
               id: true,
               bookingLimits: true,
               includeManagedEventsInLimits: true,
+              minimumBookingNotice: true,
+              afterEventBuffer: true,
             },
           },
         },
@@ -979,6 +985,8 @@ export class EventTypeRepository implements IEventTypesRepository {
           rrTimestampBasis: true,
           bookingLimits: true,
           includeManagedEventsInLimits: true,
+          minimumBookingNotice: true,
+          afterEventBuffer: true,
           parent: {
             select: {
               slug: true,
@@ -1367,6 +1375,8 @@ export class EventTypeRepository implements IEventTypesRepository {
             parentId: true,
             rrResetInterval: true,
             rrTimestampBasis: true,
+            minimumBookingNotice: true,
+            afterEventBuffer: true,
           },
         },
         parent: {
@@ -1377,6 +1387,8 @@ export class EventTypeRepository implements IEventTypesRepository {
                 parentId: true,
                 bookingLimits: true,
                 includeManagedEventsInLimits: true,
+                minimumBookingNotice: true,
+                afterEventBuffer: true,
               },
             },
           },

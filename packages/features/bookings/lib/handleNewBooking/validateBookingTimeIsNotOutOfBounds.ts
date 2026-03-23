@@ -5,6 +5,7 @@ import { ErrorCode } from "@calcom/lib/errorCodes";
 import { HttpError } from "@calcom/lib/http-error";
 import isOutOfBounds, { BookingDateInPastError } from "@calcom/lib/isOutOfBounds";
 import { withReporting } from "@calcom/lib/sentryWrapper";
+import { getEffectiveMinimumBookingNotice } from "@calcom/lib/bookingGuardrails";
 import type { EventType } from "@calcom/prisma/client";
 
 type ValidateBookingTimeEventType = Pick<
@@ -18,7 +19,10 @@ type ValidateBookingTimeEventType = Pick<
   | "eventName"
   | "id"
   | "title"
->;
+> & {
+  /** The team this event type belongs to. When present its minimumBookingNotice acts as a floor. */
+  team?: { minimumBookingNotice?: number | null } | null;
+};
 
 // Define the function with underscore prefix
 const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTimeEventType>(
@@ -30,6 +34,10 @@ const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTim
 ) => {
   let timeOutOfBounds = false;
   try {
+    const effectiveMinNotice = getEffectiveMinimumBookingNotice(
+      eventType.minimumBookingNotice,
+      eventType.team
+    );
     timeOutOfBounds = isOutOfBounds(
       reqBodyStartTime,
       {
@@ -41,7 +49,7 @@ const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTim
         bookerUtcOffset: getUTCOffsetByTimezone(reqBodyTimeZone) ?? 0,
         eventUtcOffset: eventTimeZone ? (getUTCOffsetByTimezone(eventTimeZone) ?? 0) : 0,
       },
-      eventType.minimumBookingNotice
+      effectiveMinNotice
     );
   } catch (error) {
     logger.warn({

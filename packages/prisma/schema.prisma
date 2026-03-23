@@ -642,6 +642,10 @@ model Team {
   /// @zod.import(["import { intervalLimitsType } from '../../zod-utils'"]).custom.use(intervalLimitsType)
   bookingLimits                Json?
   includeManagedEventsInLimits Boolean                 @default(false)
+  /// Minimum notice (in minutes) required before a booking can be made for any event in this team. Acts as a floor; event-type setting wins when higher.
+  minimumBookingNotice         Int?
+  /// Minimum buffer (in minutes) that must be kept after every booking in this team. Acts as a floor; event-type setting wins when higher.
+  afterEventBuffer             Int?
   internalNotePresets          InternalNotePreset[]
   creditBalance                CreditBalance?
   organizationOnboarding       OrganizationOnboarding?

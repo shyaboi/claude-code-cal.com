@@ -87,6 +87,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     includeManagedEventsInLimits: input.includeManagedEventsInLimits ?? undefined,
     rrResetInterval: input.rrResetInterval,
     rrTimestampBasis: input.rrTimestampBasis,
+    minimumBookingNotice: input.minimumBookingNotice !== undefined ? input.minimumBookingNotice : undefined,
+    afterEventBuffer: input.afterEventBuffer !== undefined ? input.afterEventBuffer : undefined,
   };
 
   if (
@@ -190,6 +192,8 @@ export const updateHandler = async ({ ctx, input }: UpdateOptions) => {
     includeManagedEventsInLimits: updatedTeam.includeManagedEventsInLimits,
     rrResetInterval: updatedTeam.rrResetInterval,
     rrTimestampBasis: updatedTeam.rrTimestampBasis,
+    minimumBookingNotice: updatedTeam.minimumBookingNotice,
+    afterEventBuffer: updatedTeam.afterEventBuffer,
   };
 };
 
