@@ -20,14 +20,30 @@ type ValidateBookingTimeEventType = Pick<
   | "title"
 >;
 
+/**
+ * Returns the effective minimumBookingNotice for a booking, applying the team-level floor.
+ * Precedence: max(eventType.minimumBookingNotice, teamMinimumBookingNotice ?? 0)
+ */
+export function getEffectiveMinimumBookingNotice(
+  eventTypeMinimumBookingNotice: number,
+  teamMinimumBookingNotice: number | null | undefined
+): number {
+  return Math.max(eventTypeMinimumBookingNotice, teamMinimumBookingNotice ?? 0);
+}
+
 // Define the function with underscore prefix
 const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTimeEventType>(
   reqBodyStartTime: string,
   reqBodyTimeZone: string,
   eventType: T,
   eventTimeZone: string | null | undefined,
-  logger: Logger<unknown>
+  logger: Logger<unknown>,
+  teamMinimumBookingNotice?: number | null
 ) => {
+  const effectiveMinimumBookingNotice = getEffectiveMinimumBookingNotice(
+    eventType.minimumBookingNotice,
+    teamMinimumBookingNotice
+  );
   let timeOutOfBounds = false;
   try {
     timeOutOfBounds = isOutOfBounds(
@@ -41,7 +57,7 @@ const _validateBookingTimeIsNotOutOfBounds = async <T extends ValidateBookingTim
         bookerUtcOffset: getUTCOffsetByTimezone(reqBodyTimeZone) ?? 0,
         eventUtcOffset: eventTimeZone ? (getUTCOffsetByTimezone(eventTimeZone) ?? 0) : 0,
       },
-      eventType.minimumBookingNotice
+      effectiveMinimumBookingNotice
     );
   } catch (error) {
     logger.warn({

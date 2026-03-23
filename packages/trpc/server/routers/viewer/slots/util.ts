@@ -1009,7 +1009,7 @@ export class AvailableSlotsService {
         dateFrom: startTime.format(),
         dateTo: endTime.format(),
         eventTypeId: eventType.id,
-        afterEventBuffer: eventType.afterEventBuffer,
+        afterEventBuffer: effectiveAfterEventBuffer,
         beforeEventBuffer: eventType.beforeEventBuffer,
         duration: input.duration || 0,
         returnDateOverrides: false,
@@ -1179,10 +1179,21 @@ export class AvailableSlotsService {
       prefix: ["getAvailableSlots", `${eventType.id}:${input.usernameList}/${input.eventTypeSlug}`],
     });
 
+    // Apply team-level guardrail floors. Team values act as minimums that cannot be
+    // undercut by individual event-type settings.
+    const effectiveMinimumBookingNotice = Math.max(
+      eventType.minimumBookingNotice ?? 0,
+      eventType.team?.minimumBookingNotice ?? 0
+    );
+    const effectiveAfterEventBuffer = Math.max(
+      eventType.afterEventBuffer ?? 0,
+      eventType.team?.afterEventBuffer ?? 0
+    );
+
     const startTime = this.getStartTime(
       startTimeAdjustedForRollingWindowComputation,
       input.timeZone,
-      eventType.minimumBookingNotice
+      effectiveMinimumBookingNotice
     );
     const endTime =
       input.timeZone === "Etc/GMT" ? dayjs.utc(input.endTime) : dayjs(input.endTime).utc().tz(input.timeZone);
@@ -1261,12 +1272,12 @@ export class AvailableSlotsService {
         // adjust start time so we can check for available slots in the first two weeks
         startTime:
           hasFallbackRRHosts && startTime.isBefore(twoWeeksFromNow)
-            ? this.getStartTime(dayjs().format(), input.timeZone, eventType.minimumBookingNotice)
+            ? this.getStartTime(dayjs().format(), input.timeZone, effectiveMinimumBookingNotice)
             : startTime,
         // adjust end time so we can check for available slots in the first two weeks
         endTime:
           hasFallbackRRHosts && endTime.isBefore(twoWeeksFromNow)
-            ? this.getStartTime(twoWeeksFromNow.format(), input.timeZone, eventType.minimumBookingNotice)
+            ? this.getStartTime(twoWeeksFromNow.format(), input.timeZone, effectiveMinimumBookingNotice)
             : endTime,
         bypassBusyCalendarTimes,
         silentCalendarFailures,
@@ -1349,7 +1360,7 @@ export class AvailableSlotsService {
       eventLength: input.duration || eventType.length,
       offsetStart: eventType.offsetStart,
       dateRanges: aggregatedAvailability,
-      minimumBookingNotice: eventType.minimumBookingNotice,
+      minimumBookingNotice: effectiveMinimumBookingNotice,
       frequency: eventType.slotInterval || input.duration || eventType.length,
       datesOutOfOffice: !isTeamEvent ? allUsersAvailability[0]?.datesOutOfOffice : undefined,
       showOptimizedSlots: eventType.showOptimizedSlots,
@@ -1598,7 +1609,7 @@ export class AvailableSlotsService {
           try {
             isOutOfBounds = isTimeOutOfBounds({
               time: slot.time,
-              minimumBookingNotice: eventType.minimumBookingNotice,
+              minimumBookingNotice: effectiveMinimumBookingNotice,
             });
           } catch (error) {
             if (error instanceof BookingDateInPastError) {

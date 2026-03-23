@@ -339,6 +339,8 @@ export async function getTeamWithoutMembers(args: {
       rrResetInterval: true,
       rrTimestampBasis: true,
       includeManagedEventsInLimits: true,
+      minimumBookingNotice: true,
+      afterEventBuffer: true,
       parent: {
         select: {
           id: true,

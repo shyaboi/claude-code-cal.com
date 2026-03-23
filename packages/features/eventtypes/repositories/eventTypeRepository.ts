@@ -1367,6 +1367,8 @@ export class EventTypeRepository implements IEventTypesRepository {
             parentId: true,
             rrResetInterval: true,
             rrTimestampBasis: true,
+            minimumBookingNotice: true,
+            afterEventBuffer: true,
           },
         },
         parent: {

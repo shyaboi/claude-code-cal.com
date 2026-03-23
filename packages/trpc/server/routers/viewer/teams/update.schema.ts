@@ -22,6 +22,10 @@ export type TUpdateInputSchema = {
   includeManagedEventsInLimits?: boolean;
   rrResetInterval?: "DAY" | "MONTH";
   rrTimestampBasis?: "CREATED_AT" | "START_TIME";
+  /** Minimum notice in minutes required before any booking in this team (floor over event-type value). null = disabled. */
+  minimumBookingNotice?: number | null;
+  /** Buffer in minutes to block after each booking in this team (floor over event-type value). null = disabled. */
+  afterEventBuffer?: number | null;
 };
 
 export const ZUpdateInputSchema: z.Schema<TUpdateInputSchema> = z.object({
@@ -48,4 +52,6 @@ export const ZUpdateInputSchema: z.Schema<TUpdateInputSchema> = z.object({
   includeManagedEventsInLimits: z.boolean().optional(),
   rrResetInterval: z.enum(["DAY", "MONTH"]).optional(),
   rrTimestampBasis: z.enum(["CREATED_AT", "START_TIME"]).optional(),
+  minimumBookingNotice: z.number().int().min(0).nullable().optional(),
+  afterEventBuffer: z.number().int().min(0).nullable().optional(),
 });

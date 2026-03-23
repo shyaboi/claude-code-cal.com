@@ -840,7 +840,8 @@ async function handler(
     reqBody.timeZone,
     eventType,
     eventTimeZone,
-    tracingLogger
+    tracingLogger,
+    eventType.team?.minimumBookingNotice
   );
 
   validateEventLength({

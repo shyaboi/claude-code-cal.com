@@ -49,6 +49,8 @@ const getEventTypesFromDBSelect = {
       rrResetInterval: true,
       rrTimestampBasis: true,
       hideBranding: true,
+      minimumBookingNotice: true,
+      afterEventBuffer: true,
       parent: { select: { hideBranding: true } },
     },
   },

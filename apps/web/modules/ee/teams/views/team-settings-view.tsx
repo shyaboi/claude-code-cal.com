@@ -19,6 +19,7 @@ import { Button } from "@calcom/ui/components/button";
 import { Form } from "@calcom/ui/components/form";
 import { SettingsToggle } from "@calcom/ui/components/form";
 import { CheckboxField } from "@calcom/ui/components/form";
+import { TextField } from "@calcom/ui/components/form";
 import { showToast } from "@calcom/ui/components/toast";
 import { revalidateTeamDataCache } from "@calcom/web/app/(booking-page-wrapper)/team/[slug]/[type]/actions";
 import { IntervalLimitsManager } from "@calcom/features/eventtypes/components/tabs/limits/EventLimitsTab";
@@ -29,6 +30,152 @@ import MakeTeamPrivateSwitch from "../components/MakeTeamPrivateSwitch";
 import RoundRobinSettings from "../components/RoundRobinSettings";
 
 type ProfileViewProps = { team: RouterOutputs["viewer"]["teams"]["get"] };
+
+/**
+ * Team-level booking guardrails: minimum notice and after-event buffer floors.
+ * These act as policy minimums — individual event types can be equal or more restrictive,
+ * but never less than the team floor.
+ */
+const BookingGuardrailsView = ({ team }: ProfileViewProps) => {
+  const { t } = useLocale();
+  const utils = trpc.useUtils();
+
+  const form = useForm<{ minimumBookingNotice: number | null; afterEventBuffer: number | null }>({
+    defaultValues: {
+      minimumBookingNotice: team?.minimumBookingNotice ?? null,
+      afterEventBuffer: team?.afterEventBuffer ?? null,
+    },
+  });
+
+  const {
+    formState: { isSubmitting, isDirty },
+    reset,
+    register,
+  } = form;
+
+  const mutation = trpc.viewer.teams.update.useMutation({
+    onError: (err) => {
+      showToast(err.message, "error");
+    },
+    async onSuccess(res) {
+      await utils.viewer.teams.get.invalidate();
+      if (res) {
+        reset({
+          minimumBookingNotice: res.minimumBookingNotice ?? null,
+          afterEventBuffer: res.afterEventBuffer ?? null,
+        });
+      }
+      if (team?.slug) {
+        revalidateTeamDataCache({
+          teamSlug: team.slug,
+          orgSlug: team.parent?.slug ?? null,
+        });
+      }
+      showToast(t("booking_guardrails_updated_successfully"), "success");
+    },
+  });
+
+  const isAdmin = team && checkAdminOrOwner(team.membership.role);
+
+  return (
+    <>
+      {isAdmin ? (
+        <Form
+          form={form}
+          handleSubmit={(values) => {
+            mutation.mutate({
+              id: team.id,
+              minimumBookingNotice: values.minimumBookingNotice,
+              afterEventBuffer: values.afterEventBuffer,
+            });
+          }}>
+          <Controller
+            name="minimumBookingNotice"
+            render={({ field: { value, onChange } }) => {
+              const isChecked = value !== null && value !== undefined;
+              return (
+                <SettingsToggle
+                  toggleSwitchAtTheEnd={true}
+                  labelClassName="text-sm"
+                  title={t("minimum_booking_notice")}
+                  description={t("minimum_booking_notice_team_description")}
+                  checked={isChecked}
+                  onCheckedChange={(active) => {
+                    const next = active ? 60 : null;
+                    onChange(next);
+                    mutation.mutate({ id: team.id, minimumBookingNotice: next });
+                  }}
+                  switchContainerClassName={classNames(
+                    "border-subtle mt-6 rounded-lg border py-6 px-4 sm:px-6",
+                    isChecked && "rounded-b-none"
+                  )}
+                  childrenClassName="lg:ml-0">
+                  <div className="border-subtle border border-y-0 p-6">
+                    <TextField
+                      label={t("minimum_notice_minutes")}
+                      type="number"
+                      min={0}
+                      value={value ?? 60}
+                      onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                  <SectionBottomActions className="mb-6" align="end">
+                    <Button disabled={isSubmitting || !isDirty} type="submit" color="primary">
+                      {t("update")}
+                    </Button>
+                  </SectionBottomActions>
+                </SettingsToggle>
+              );
+            }}
+          />
+          <Controller
+            name="afterEventBuffer"
+            render={({ field: { value, onChange } }) => {
+              const isChecked = value !== null && value !== undefined;
+              return (
+                <SettingsToggle
+                  toggleSwitchAtTheEnd={true}
+                  labelClassName="text-sm"
+                  title={t("after_event_buffer")}
+                  description={t("after_event_buffer_team_description")}
+                  checked={isChecked}
+                  onCheckedChange={(active) => {
+                    const next = active ? 15 : null;
+                    onChange(next);
+                    mutation.mutate({ id: team.id, afterEventBuffer: next });
+                  }}
+                  switchContainerClassName={classNames(
+                    "border-subtle mt-6 rounded-lg border py-6 px-4 sm:px-6",
+                    isChecked && "rounded-b-none"
+                  )}
+                  childrenClassName="lg:ml-0">
+                  <div className="border-subtle border border-y-0 p-6">
+                    <TextField
+                      label={t("buffer_minutes")}
+                      type="number"
+                      min={0}
+                      value={value ?? 15}
+                      onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                  <SectionBottomActions className="mb-6" align="end">
+                    <Button disabled={isSubmitting || !isDirty} type="submit" color="primary">
+                      {t("update")}
+                    </Button>
+                  </SectionBottomActions>
+                </SettingsToggle>
+              );
+            }}
+          />
+        </Form>
+      ) : (
+        <div className="border-subtle rounded-md border p-5">
+          <span className="text-default text-sm">{t("only_owner_change")}</span>
+        </div>
+      )}
+    </>
+  );
+};
 
 const BookingLimitsView = ({ team }: ProfileViewProps) => {
   const { t } = useLocale();
@@ -216,6 +363,7 @@ const TeamSettingsViewWrapper = () => {
 
   return (
     <>
+      <BookingGuardrailsView team={team} />
       <BookingLimitsView team={team} />
       <PrivacySettingsView team={team} />
       <InternalNotePresetsView team={team} />

@@ -101,7 +101,7 @@ const _ensureAvailableUsers = async (
       dateFrom: startDateTimeUtc.format(),
       dateTo: endDateTimeUtc.format(),
       beforeEventBuffer: eventType.beforeEventBuffer,
-      afterEventBuffer: eventType.afterEventBuffer,
+      afterEventBuffer: Math.max(eventType.afterEventBuffer ?? 0, eventType.team?.afterEventBuffer ?? 0),
       bypassBusyCalendarTimes: false,
       mode,
       withSource: true,
